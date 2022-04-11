@@ -1,4 +1,4 @@
-#Тест
+#Тест2
 print('hello world')
 a=1
 b='test'
