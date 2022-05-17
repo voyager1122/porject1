@@ -1,110 +1,87 @@
-# 08.Ansible.Worckshop
+# 09.Docker
 
-## Redmine screenshot
+### URLs of repository and package
+[Git](https://github.com/voyager1122/09.Docker)
 
-![Redmine screenshot](./printscreen_of_redmine.png)
+[DockerHub](https://hub.docker.com/r/voyager1122/docker_srv)
 
 
+### Dockerfile
+```
+FROM python:3-alpine
+MAINTAINER ivan.fanchenko@gmail.com
+RUN apk update && apk add python3 
+RUN pip3 install --no-cache-dir flask
+ADD demosrv.py /
+CMD [ "python3", "./demosrv.py" ]
+EXPOSE 5000 
+```
 
-## Console output result
+
+### Github actions:    .github/workflows/build.yaml
 
 ```yaml
-ansible-playbook -i inventory.yaml redmine.yaml
+name: Docker build and push
+on:
+  push:
+    branches:
+    - main 
+jobs:
+  build:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_LOGIN }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-PLAY [redmine] *****************************************************************************************************************************
-
-TASK [Gathering Facts] *********************************************************************************************************************
-[DEPRECATION WARNING]: Distribution Ubuntu 16.04 on host redmine_27 should use /usr/bin/python3, but is using /usr/bin/python for backward 
-compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host. See
- https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be removed in
- version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
-ok: [redmine_27]
-
-TASK [debug] *******************************************************************************************************************************
-ok: [redmine_27] => {
-    "msg": "192.168.201.27"
-}
-
-TASK [Redmine. Install packages] ***********************************************************************************************************
-ok: [redmine_27]
-
-TASK [redmine : Redmine. Clone repository] *************************************************************************************************
-ok: [redmine_27]
-
-TASK [redmine : Redmine. Change permissions] ***********************************************************************************************
-ok: [redmine_27]
-
-TASK [redmine : Redmine. Change permissions] ***********************************************************************************************
-changed: [redmine_27]
-
-TASK [redmine : Config database] ***********************************************************************************************************
-ok: [redmine_27]
-
-TASK [redmine : Redmine. Setup 01] *********************************************************************************************************
-changed: [redmine_27]
-
-TASK [redmine : Session store secret generation] *******************************************************************************************
-ok: [redmine_27]
-
-TASK [redmine : Redmine. Setup 02] *********************************************************************************************************
-changed: [redmine_27]
-
-TASK [redmine : Configuration files for virtualhost] ***************************************************************************************
-ok: [redmine_27]
-
-TASK [mysql : mysql_db] ********************************************************************************************************************
-ok: [redmine_27]
-
-TASK [mysql : mysql_user] ******************************************************************************************************************
-ok: [redmine_27]
-
-TASK [Add redmine-27.sa to host file] ******************************************************************************************************
-changed: [redmine_27]
-
-TASK [uri] *********************************************************************************************************************************
-ok: [redmine_27]
-
-TASK [uri] *********************************************************************************************************************************
-ok: [redmine_27]
-
-TASK [lineinfile] **************************************************************************************************************************
-changed: [redmine_27]
-
-PLAY RECAP *********************************************************************************************************************************
-redmine_27                 : ok=17   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: voyager1122/docker_srv:latest
 
 ```
 
 
-## Testing console output result
-
-```yaml
-ansible-playbook -i inventory.yaml redmine.yaml -t test --ask-vault-pass
-
-Vault password: 
-
-PLAY [redmine] *****************************************************************************************************************************
-
-TASK [Gathering Facts] *********************************************************************************************************************
-[DEPRECATION WARNING]: Distribution Ubuntu 16.04 on host redmine_27 should use /usr/bin/python3, but is using /usr/bin/python for backward 
-compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host. See
- https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be removed in
- version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
-ok: [redmine_27]
-
-TASK [Add redmine-27.sa to host file] ******************************************************************************************************
-changed: [redmine_27]
-
-TASK [==== Test deployment ====] ***********************************************************************************************************
-ok: [redmine_27]
-
-TASK [Send successfull notification to slack] **********************************************************************************************
-ok: [redmine_27]
-
-TASK [lineinfile] **************************************************************************************************************************
-changed: [redmine_27]
-
-PLAY RECAP *********************************************************************************************************************************
-redmine_27                 : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
+### Running docker container
+```
+docker run -d -p 5000:5000 09.docker:1
+67bd070c3f0661be27ed3acdc6f32fcff017d391bf9288f609c963339f941495
+tst@tst:~$ docker ps
+CONTAINER ID   IMAGE         COMMAND                  CREATED         STATUS         PORTS                                       NAMES
+67bd070c3f06   09.docker:1   "python3 ./demosrv.py"   3 seconds ago   Up 2 seconds   0.0.0.0:5000->5000/tcp, :::5000->5000/tcp   agitated_moore
+tst@tst:~$ curl http://localhost:5000/companies
+[{"id": 1, "name": "Company One"}, {"id": 2, "name": "Company Two"}]tst@tst:~$ 
+tst@tst:~$ 
+tst@tst:~$ 
+tst@tst:~$ docker logs 67bd070c3f06
+ * Serving Flask app 'demosrv' (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on all addresses (0.0.0.0)
+   WARNING: This is a development server. Do not use it in a production deployment.
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.17.0.2:5000 (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 368-664-456
+172.17.0.1 - - [17/May/2022 13:18:11] "GET /companies HTTP/1.1" 200 -
 
 ```
+
+### Testing connection
+```
+curl http://localhost:5000/companies
+
+[{"id": 1, "name": "Company One"}, {"id": 2, "name": "Company Two"}] 
+
+```
+
+
+#### Screenshot
+
+![Docker screenshot](./docker_status.png)
